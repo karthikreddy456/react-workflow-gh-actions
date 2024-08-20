@@ -44,6 +44,13 @@ jobs:
             - name: Build
               run: npm run build
 
+            - name: dockercommands
+              run: |
+                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
+                docker build -t default/myrepository123 .
+                docker tag default/myrepository123:latest 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
+                docker push 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
+
             # - name: Deploy
             #   run: |
             #     git config --global user.name $user_name
