@@ -29,6 +29,10 @@ jobs:
               with:
                 node-version: ${{ matrix.node-version }}
 
+            - name: Listing the files in the directories before running install command
+              run: |
+                  ls -ltr
+
             - name: Cache dependencies
               uses: actions/cache@v2
               with:
@@ -38,6 +42,10 @@ jobs:
             
             - name: Install dependencies
               run: npm install
+
+            - name: Listing the files in the directories after running install command
+              run: |
+                  ls -ltr
 
             - name: Run the tests and generate coverage report
               run: npm test -- --coverage
