@@ -1,17 +1,18 @@
 name: CICD PIPELINE
 
 on:
-    workflow_dispatch: 
-        inputs:
-            environment:
-                description: 'Executed based on env selected'
-                required: true
-                default: qa
-                type: choice
-                options:
-                    - dev
-                    - qa
-                    - prod
+  push
+    # workflow_dispatch: 
+    #     inputs:
+    #         environment:
+    #             description: 'Executed based on env selected'
+    #             required: true
+    #             default: qa
+    #             type: choice
+    #             options:
+    #                 - dev
+    #                 - qa
+    #                 - prod
 
 jobs:
     build-and-deploy:
