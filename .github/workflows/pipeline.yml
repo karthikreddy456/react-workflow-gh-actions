@@ -1,18 +1,18 @@
 name: CICD PIPELINE
 
 on:
-  push
-    # workflow_dispatch: 
-    #     inputs:
-    #         environment:
-    #             description: 'Executed based on env selected'
-    #             required: true
-    #             default: qa
-    #             type: choice
-    #             options:
-    #                 - dev
-    #                 - qa
-    #                 - prod
+  
+    workflow_dispatch: 
+        inputs:
+            environment:
+                description: 'Executed based on env selected'
+                required: true
+                default: qa
+                type: choice
+                options:
+                    - dev
+                    - qa
+                    - prod
 
 jobs:
     build-and-deploy:
@@ -89,21 +89,25 @@ jobs:
 
             # -------------------------------------------------------------------------------------------
 
-            - name: set environment variables
-              run : |
-                if [ "${{ github.event.inputs.environment }}" == "dev" ]; then
-                #   echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+            # - name: set environment variables
+            #   run : |
+                # if [ "${{ github.event.inputs.environment }}" == "dev" ]; then
+                #  echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
                     
                   
-                elif [ "${{ github.event.inputs.environment }}" == "qa" ]; then
-                #   echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+                # elif [ "${{ github.event.inputs.environment }}" == "qa" ]; then
+                #  echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
                   
-                elif [ "${{ github.event.inputs.environment }}" == "prod" ]; then
-                #   echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-                fi
+                # elif [ "${{ github.event.inputs.environment }}" == "prod" ]; then
+                #      echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+                # fi
             - name: print the environmental variables
               run: |
-            #    echo "The environment variable Environment is: $Environment"
+                echo "The environment variable Environment is: $Environment"
+
+            - name: Update Helm chart values
+              run: |
+                 helm upgrade --install my-application ./helm_chart --set image.repository=725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123 --set image.tag=latest --namespace default
 
 
 
