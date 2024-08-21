@@ -51,11 +51,11 @@ jobs:
             #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             #     aws-region: ap-south-1
 
-            - name: Configure AWS Credentials
-              uses: aws-actions/configure-aws-credentials@v1
-              with:
-                role-to-assume: arn:aws:iam::725158397939:role/github_actions_accessecr
-                aws-region: ap-south-1
+            # - name: Configure AWS Credentials
+            #   uses: aws-actions/configure-aws-credentials@v1
+            #   with:
+            #     role-to-assume: arn:aws:iam::725158397939:role/github_actions_accessecr
+            #     aws-region: ap-south-1
 
             
 
