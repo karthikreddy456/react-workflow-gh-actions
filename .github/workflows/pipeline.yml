@@ -33,32 +33,32 @@ jobs:
               run: |
                   ls -ltr
 
-            - name: Cache dependencies
-              uses: actions/cache@v2
-              with:
-                path: |
-                  **/node_modules
-                key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+            # - name: Cache dependencies
+            #   uses: actions/cache@v2
+            #   with:
+            #     path: |
+            #       **/node_modules
+            #     key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
             
-            - name: Install dependencies
-              run: npm install
+            # - name: Install dependencies
+            #   run: npm install
 
-            - name: Listing the files in the directories after running install command
-              run: |
-                  ls -ltr
+            # - name: Listing the files in the directories after running install command
+            #   run: |
+            #       ls -ltr
 
-            - name: Run the tests and generate coverage report
-              run: npm test -- --coverage
+            # - name: Run the tests and generate coverage report
+            #   run: npm test -- --coverage
 
-            - name: Build
-              run: npm run build
+            # - name: Build
+            #   run: npm run build
 
-            - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v2
-              with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ap-south-1
+            # - name: Configure AWS credentials
+            #   uses: aws-actions/configure-aws-credentials@v2
+            #   with:
+            #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            #     aws-region: ap-south-1
 
             # - name: Configure AWS Credentials
             #   uses: aws-actions/configure-aws-credentials@v1
@@ -68,12 +68,12 @@ jobs:
 
             
 
-            - name: dockercommands
-              run: |
-                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
-                docker build -t default/myrepository123 .
-                docker tag default/myrepository123:latest 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
-                docker push 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
+            # - name: dockercommands
+            #   run: |
+            #     aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
+            #     docker build -t default/myrepository123 .
+            #     docker tag default/myrepository123:latest 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
+            #     docker push 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
 
             # - name: Deploy
             #   run: |
@@ -89,18 +89,18 @@ jobs:
 
             # -------------------------------------------------------------------------------------------
 
-            # - name: set environment variables
-            #   run : |
-                # if [ "${{ github.event.inputs.environment }}" == "dev" ]; then
-                #  echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+            - name: set environment variables
+              run : |
+                if [ "${{ github.event.inputs.environment }}" == "dev" ]; then
+                 echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
                     
                   
-                # elif [ "${{ github.event.inputs.environment }}" == "qa" ]; then
-                #  echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+                elif [ "${{ github.event.inputs.environment }}" == "qa" ]; then
+                 echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
                   
-                # elif [ "${{ github.event.inputs.environment }}" == "prod" ]; then
-                #      echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-                # fi
+                elif [ "${{ github.event.inputs.environment }}" == "prod" ]; then
+                     echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+                fi
             - name: print the environmental variables
               run: |
                 echo "The environment variable Environment is: $Environment"
