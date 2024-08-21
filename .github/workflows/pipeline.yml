@@ -103,18 +103,19 @@ jobs:
                  echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
                  echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
                 fi
-            - name: Login to Amazon ECR
-              id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v2
-            - name: Setting Env variables based on ECR
-              run: |
-                echo "REPOSITORY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+            # - name: Login to Amazon ECR
+            #   id: login-ecr
+            #   uses: aws-actions/amazon-ecr-login@v2
+
+            # - name: Setting Env variables based on ECR
+            #   run: |
+            #     echo "REPOSITORY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
             - name: print the environmental variables
               run: |
                 echo "The environment variable Environment is: $Environment"
                 echo "The image Tag is: $IMAGE_TAG"
-                echo "THe ECR Repository is: $REPOSITORY"
-
+               
+              # echo "THe ECR Repository is: $REPOSITORY"
             # - name: Update Helm chart values
             #   run: |
             #      helm upgrade --install my-application ./helm_chart --set image.repository=725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123 --set image.tag=latest --namespace default
