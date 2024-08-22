@@ -29,9 +29,9 @@ jobs:
               with:
                 node-version: ${{ matrix.node-version }}
 
-            - name: Listing the files in the directories before running install command
-              run: |
-                  ls -ltr
+            # - name: Listing the files in the directories before running install command
+            #   run: |
+            #       ls -ltr
 
             # - name: Cache dependencies
             #   uses: actions/cache@v2
@@ -40,25 +40,29 @@ jobs:
             #       **/node_modules
             #     key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
             
-            # - name: Install dependencies
-            #   run: npm install
+            - name: Install dependencies
+              run: npm install
 
-            # - name: Listing the files in the directories after running install command
-            #   run: |
-            #       ls -ltr
+            - name: Listing the files in the directories after running install command
+              run: |
+                  ls -ltr
 
             # - name: Run the tests and generate coverage report
             #   run: npm test -- --coverage
 
-            # - name: Build
-            #   run: npm run build
+            - name: Build
+              run: npm run build
 
-            # - name: Configure AWS credentials
-            #   uses: aws-actions/configure-aws-credentials@v2
-            #   with:
-            #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            #     aws-region: ap-south-1
+            - name: Listing the files in the directories after running build command
+              run: |
+                  ls -ltr
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v2
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                aws-region: ap-south-1
 
             # - name: Configure AWS Credentials
             #   uses: aws-actions/configure-aws-credentials@v1
@@ -66,14 +70,18 @@ jobs:
             #     role-to-assume: arn:aws:iam::725158397939:role/github_actions_accessecr
             #     aws-region: ap-south-1
 
-            
+            - name: Settingc Env variables based on ECR
+              run: |
+                echo "BUILD_NAME=default/myrepository123" >> $GITHUB_ENV
+                echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
+                echo "REPOSITORY=725158397939.dkr.ecr.ap-south-1.amazonaws.com" >> $GITHUB_ENV
 
-            # - name: dockercommands
-            #   run: |
-            #     aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
-            #     docker build -t default/myrepository123 .
-            #     docker tag default/myrepository123:latest 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
-            #     docker push 725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123:latest
+            - name: dockercommands to push into ecr
+              run: |
+                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
+                docker build -t $BUILD_NAME:$IMAGE_TAG .
+                docker tag $BUILD_NAME:$IMAGE_TAG $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
+                docker push $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
 
             # - name: Deploy
             #   run: |
