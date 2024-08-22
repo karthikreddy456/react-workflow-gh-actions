@@ -26,6 +26,11 @@ jobs:
               uses: actions/setup-node@v1
               with:
                 node-version: ${{ matrix.node-version }}
+            - uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: arn:aws:iam::725158397939:role/github_actions
+                aws-region: ap-south-1
+                
 
             # - name: Listing the files in the directories before running install command
             #   run: |
