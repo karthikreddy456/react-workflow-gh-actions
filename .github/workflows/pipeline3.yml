@@ -1,0 +1,103 @@
+name: Update and execute EKS
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - prod
+          - qa
+          - qa-1
+      region:
+        required: true
+        type: string
+        default: "us-west-2"
+      cluster:
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      branch:
+        type: string
+        required: true
+      region:
+        type: string
+        required: true
+      cluster:
+        type: string
+        required: true
+permissions:
+  id-token: write
+  contents: write
+jobs:
+  building-packing:
+    name: Building and packaging maven application
+    runs-on: ubuntu-latest
+    # environment:
+      # name: ${{ inputs.branch }}
+    # env:
+    #   REPOSITORY_NAME: ${{ inputs.repository }}
+      # BRANCH_NAME: ${{ inputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Setting Env variables using github actions secrets
+        run: |
+          if [ "${{ github.event.inputs.branch }}" == "dev" ]; then
+              echo "AWS_ROLE_TO_ASSUME=${{ secrets.DEV_GITHUB_ACCESSROLE }}" >> $GITHUB_ENV
+              echo "BUILD_NAME=custom-service-dev" >> $GITHUB_ENV
+              echo "REPOSITORY=046454718164.dkr.ecr.us-west-2.amazonaws.com >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.branch }}" == "qa" ]; then
+              echo "AWS_ROLE_TO_ASSUME=${{ secrets.QA_GITHUB_ACCESSROLE }}" >> $GITHUB_ENV
+              echo "BUILD_NAME=custom-service-qa" >> $GITHUB_ENV
+              echo "REPOSITORY=046454718164.dkr.ecr.us-west-2.amazonaws.com" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.branch }}" == "qa1" ]; then
+              echo "AWS_ROLE_TO_ASSUME=${{ secrets.QA1_GITHUB_ACCESSROLE }}" >> $GITHUB_ENV
+              echo "BUILD_NAME=custom-service-qa1" >> $GITHUB_ENV
+              echo "REPOSITORY=046454718164.dkr.ecr.us-west-2.amazonaws.com" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.branch }}" == "prod" ]; then
+              echo "AWS_ROLE_TO_ASSUME=${{ secrets.PROD_GITHUB_ACCESSROLE }}" >> $GITHUB_ENV
+              echo "BUILD_NAME=custom-service-prod" >> $GITHUB_ENV
+              echo "REPOSITORY=046454718164.dkr.ecr.us-west-2.amazonaws.com" >> $GITHUB_ENV
+          fi
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: $AWS_ROLE_TO_ASSUME
+          aws-region: ${{ github.event.inputs.region }}
+      - uses: actions/checkout@v4
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          cache: maven
+      - name: Build with Maven
+        run: mvn -B install --file pom.xml
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Settingc Env variables based on ECR
+        run: |
+          echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
+      - name: Build, tag, and push docker image to Amazon ECR
+        # env:
+        #   REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        #   REPOSITORY: maven-application
+        #   IMAGE_TAG: ${{ github.run_number }}
+        run: |
+          docker build -t $BUILD_NAME:$IMAGE_TAG .
+          docker tag $BUILD_NAME:$IMAGE_TAG $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
+          docker push $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
+      - name: Update kube config
+        run: aws eks update-kubeconfig --name "${{ github.event.inputs.cluster }}" --region ${{ github.event.inputs.region }}
+      - name: Deploy to EKS
+        # env:
+        #   REGISTRY: ${{ steps.login-ecr.outputs.registry }}        
+        #   IMAGE_TAG: ${{ github.run_number }}
+        run: |
+          kubectl get po
+          kubectl set image deployments/swinerton-deployment swinerton-app=$REPOSITORY/$BUILD_NAME:$IMAGE_TAG  
