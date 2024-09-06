@@ -17,7 +17,7 @@ permissions:
   contents: read
 jobs:
     build-and-deploy:
-        runs-on: karthik_runner
+        runs-on: fargate_runner
         steps:
             - name: Checkout repository
               uses: actions/checkout@v2
