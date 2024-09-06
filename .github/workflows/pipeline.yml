@@ -17,10 +17,7 @@ permissions:
   contents: read
 jobs:
     build-and-deploy:
-        runs-on: k8s-action-runner-pbd6p-j225s
-        strategy:
-          matrix:
-            node-version: [12.22.12]
+        runs-on: eks_runner
         steps:
             - name: Checkout repository
               uses: actions/checkout@v2
