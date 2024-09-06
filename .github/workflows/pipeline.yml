@@ -43,8 +43,8 @@ jobs:
             #       **/node_modules
             #     key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
             
-            # - name: Install dependencies
-            #   run: npm install
+            - name: Install dependencies
+              run: npm install
 
             - name: Listing the files in the directories after running install command
               run: |
