@@ -19,7 +19,7 @@ jobs:
     build-and-deploy:
         runs-on: eks_runner
         container:
-          image: karthikreddy589/sample_reactappln
+          image: windows-latest
         steps:
             - name: Checkout repository
               uses: actions/checkout@v2
