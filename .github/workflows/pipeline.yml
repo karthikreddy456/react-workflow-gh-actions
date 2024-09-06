@@ -17,7 +17,7 @@ permissions:
   contents: read
 jobs:
     build-and-deploy:
-        runs-on: k8s-action-runner-d5brf-fdqcc
+        runs-on: karthik_runner
         container:
           image: Windows Server 2022
         steps:
