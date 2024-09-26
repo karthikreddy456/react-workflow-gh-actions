@@ -1,136 +1,123 @@
-name: CICD PIPELINE
-
+name: Backend deployment
 on:
-  
-    workflow_dispatch: 
-        inputs:
-          branch:
-            required: true
-            default: qa
-            type: choice
-            options:
-                - dev
-                - qa
-                - prod
+  push:
+    branches:
+      - dev
+      - qa
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Select the branch to run the workflow'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
 permissions:
   id-token: write
   contents: read
+
 jobs:
-    build-and-deploy:
-        runs-on: fargate_runner
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v2
+  set-environment:
+    name: setup environments
+    runs-on: ubuntu-20.04
+    environment: ${{ github.ref_name || github.event.inputs.branch }}
+    steps:
+      - name: Set up environment
+        run: |
+          echo "Deploying for the environment: ${{ github.ref_name || github.event.inputs.branch }}"    
 
-            - name: Set up Node.js 12.22.12
-              uses: actions/setup-node@v1
-              with:
-                node-version: 12.22.12
-            - uses: aws-actions/configure-aws-credentials@v4
-              with:
-                role-to-assume: arn:aws:iam::725158397939:role/github_actions
-                aws-region: ap-south-1
-                
+  docker-build-package:
+    name: Build and Package Maven Application
+    runs-on: ubuntu-20.04
+    needs: set-environment
 
-            # - name: Listing the files in the directories before running install command
-            #   run: |
-            #       ls -ltr
+    steps:
+      - uses: actions/checkout@v4
 
-            # - name: Cache dependencies
-            #   uses: actions/cache@v2
-            #   with:
-            #     path: |
-            #       **/node_modules
-            #     key: ${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-            
-            - name: Install dependencies
-              run: npm install
+      - name: Set Up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          cache: maven
+      
+      - name: Build with Maven
+        run: mvn -B install --file pom.xml
 
-            - name: Listing the files in the directories after running install command
-              run: |
-                  ls -ltr
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROLE_GITHUB }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-            # - name: Run the tests and generate coverage report
-            #   run: npm test -- --coverage
+      - name: Check if Docker is available and install if needed
+        run: |
+          if ! command -v docker &> /dev/null; then
+            echo "Docker not found, installing..."
+            sudo apt-get update
+            sudo apt-get install -y \
+                apt-transport-https \
+                ca-certificates \
+                curl \
+                gnupg-agent \
+                software-properties-common
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+            sudo add-apt-repository \
+              "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+            sudo apt-get update
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+          else
+            echo "Docker is available, proceeding with the build."
+          fi
 
-            - name: Build
-              run: npm run build
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-            - name: Listing the files in the directories after running build command
-              run: |
-                  ls -ltr
+      - name: Check AWS Credentials
+        run: aws sts get-caller-identity
 
-            # - name: Configure AWS credentials
-            #   uses: aws-actions/configure-aws-credentials@v2
-            #   with:
-            #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            #     aws-region: ap-south-1
+      - name: Build, Tag, and Push Docker Image to Amazon ECR
+        run: |
+          IMAGE_TAG=${{ github.run_number }}
+          docker build -t ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ./
+          docker tag ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
+          docker push ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
 
-            # - name: Configure AWS Credentials
-            #   uses: aws-actions/configure-aws-credentials@v1
-            #   with:
-            #     role-to-assume: arn:aws:iam::725158397939:role/github_actions_accessecr
-            #     aws-region: ap-south-1
+  helm-deploy:
+    name: Helm deploy
+    runs-on: ubuntu-20.04
+    needs: [set-environment, docker-build-package]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
-            - name: Settingc Env variables based on ECR
-              run: |
-                echo "BUILD_NAME=default/myrepository123" >> $GITHUB_ENV
-                echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
-                echo "REPOSITORY=725158397939.dkr.ecr.ap-south-1.amazonaws.com" >> $GITHUB_ENV
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROLE_GITHUB }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-            - name: dockercommands to push into ecr
-              run: |
-                aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 725158397939.dkr.ecr.ap-south-1.amazonaws.com
-                docker build -t $BUILD_NAME:$IMAGE_TAG .
-                docker tag $BUILD_NAME:$IMAGE_TAG $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
-                docker push $REPOSITORY/$BUILD_NAME:$IMAGE_TAG
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ vars.CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
 
-            # - name: Deploy
-            #   run: |
-            #     git config --global user.name $user_name
-            #     git config --global user.email $user_email
-            #     git remote set-url origin https://${github_token}@github.com/${repository}
-            #     npm run deploy
-            #   env:
-            #     user_name: 'github-actions[bot]'
-            #     user_email: 'github-actions[bot]@users.noreply.github.com'
-            #     github_token: ${{ secrets.ACTIONS_DEPLOY_ACCESS_TOKEN }}
-            #     repository: ${{ github.repository }}
+      - uses: azure/setup-helm@v4.2.0
+        with:
+          version: 'v3.2.0'
+        id: install
 
-            # -------------------------------------------------------------------------------------------
-            
-            - name: set environment variables
-              run : |
-                if [ "${{ github.event.inputs.environment }}" == "dev" ]; then
-                 echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-                 echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV                  
-                  
-                elif [ "${{ github.event.inputs.environment }}" == "qa" ]; then
-                 echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-                 echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV 
+      - name: helm version
+        run: helm version 
 
-                elif [ "${{ github.event.inputs.environment }}" == "prod" ]; then
-                 echo "Environment=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
-                 echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
-                fi
-            # - name: Login to Amazon ECR
-            #   id: login-ecr
-            #   uses: aws-actions/amazon-ecr-login@v2
+      - name: helm 
+        run: helm list
 
-            # - name: Setting Env variables based on ECR
-            #   run: |
-            #     echo "REPOSITORY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-            - name: print the environmental variables
-              run: |
-                echo "The environment variable Environment is: $Environment"
-                echo "The image Tag is: $IMAGE_TAG"
-               
-              # echo "THe ECR Repository is: $REPOSITORY"
-            # - name: Update Helm chart values
-            #   run: |
-            #      helm upgrade --install my-application ./helm_chart --set image.repository=725158397939.dkr.ecr.ap-south-1.amazonaws.com/default/myrepository123 --set image.tag=latest --namespace default
-
-
-
-        
+      - name: Helm install/upgrade
+        run: |
+          IMAGE_TAG=${{ github.run_number }}
+          helm upgrade --install custom-service-backend swinerton-app/ --set deployment.image=${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
