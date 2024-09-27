@@ -36,94 +36,94 @@ jobs:
         run: |
           echo "Deploying for the environment: ${{ github.ref_name || github.event.inputs.branch }}"    
 
-  docker-build-package:
-    name: Build and Package Maven Application
-    runs-on: ubuntu-20.04
-    needs: set-environment
+  # docker-build-package:
+  #   name: Build and Package Maven Application
+  #   runs-on: ubuntu-20.04
+  #   needs: set-environment
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Set Up JDK 8
-        uses: actions/setup-java@v2
-        with:
-          java-version: '8'
-          distribution: 'adopt'
-          cache: maven
+  #     - name: Set Up JDK 8
+  #       uses: actions/setup-java@v2
+  #       with:
+  #         java-version: '8'
+  #         distribution: 'adopt'
+  #         cache: maven
       
-      - name: Build with Maven
-        run: mvn -B install --file pom.xml
+  #     - name: Build with Maven
+  #       run: mvn -B install --file pom.xml
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.ROLE_GITHUB }}
-          aws-region: ${{ vars.AWS_REGION }}
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.ROLE_GITHUB }}
+  #         aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Check if Docker is available and install if needed
-        run: |
-          if ! command -v docker &> /dev/null; then
-            echo "Docker not found, installing..."
-            sudo apt-get update
-            sudo apt-get install -y \
-                apt-transport-https \
-                ca-certificates \
-                curl \
-                gnupg-agent \
-                software-properties-common
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            sudo add-apt-repository \
-              "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-            sudo apt-get update
-            sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-          else
-            echo "Docker is available, proceeding with the build."
-          fi
+  #     - name: Check if Docker is available and install if needed
+  #       run: |
+  #         if ! command -v docker &> /dev/null; then
+  #           echo "Docker not found, installing..."
+  #           sudo apt-get update
+  #           sudo apt-get install -y \
+  #               apt-transport-https \
+  #               ca-certificates \
+  #               curl \
+  #               gnupg-agent \
+  #               software-properties-common
+  #           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  #           sudo add-apt-repository \
+  #             "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  #           sudo apt-get update
+  #           sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+  #         else
+  #           echo "Docker is available, proceeding with the build."
+  #         fi
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Check AWS Credentials
-        run: aws sts get-caller-identity
+  #     - name: Check AWS Credentials
+  #       run: aws sts get-caller-identity
 
-      - name: Build, Tag, and Push Docker Image to Amazon ECR
-        run: |
-          IMAGE_TAG=${{ github.run_number }}
-          docker build -t ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ./
-          docker tag ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
-          docker push ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
+  #     - name: Build, Tag, and Push Docker Image to Amazon ECR
+  #       run: |
+  #         IMAGE_TAG=${{ github.run_number }}
+  #         docker build -t ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ./
+  #         docker tag ${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }} ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
+  #         docker push ${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
 
-  helm-deploy:
-    name: Helm deploy
-    runs-on: ubuntu-20.04
-    needs: [set-environment, docker-build-package]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.branch }}
+  # helm-deploy:
+  #   name: Helm deploy
+  #   runs-on: ubuntu-20.04
+  #   needs: [set-environment, docker-build-package]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.branch }}
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.ROLE_GITHUB }}
-          aws-region: ${{ vars.AWS_REGION }}
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.ROLE_GITHUB }}
+  #         aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ vars.CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
+  #     - name: Update kubeconfig
+  #       run: aws eks update-kubeconfig --name ${{ vars.CLUSTER_NAME }} --region ${{ vars.AWS_REGION }}
 
-      - uses: azure/setup-helm@v4.2.0
-        with:
-          version: 'v3.2.0'
-        id: install
+  #     - uses: azure/setup-helm@v4.2.0
+  #       with:
+  #         version: 'v3.2.0'
+  #       id: install
 
-      - name: helm version
-        run: helm version 
+  #     - name: helm version
+  #       run: helm version 
 
-      - name: helm 
-        run: helm list
+  #     - name: helm 
+  #       run: helm list
 
-      - name: Helm install/upgrade
-        run: |
-          IMAGE_TAG=${{ github.run_number }}
-          helm upgrade --install custom-service-backend swinerton-app/ --set deployment.image=${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
+  #     - name: Helm install/upgrade
+  #       run: |
+  #         IMAGE_TAG=${{ github.run_number }}
+  #         helm upgrade --install custom-service-backend swinerton-app/ --set deployment.image=${{ vars.ECR_REPOSITORY }}/${{ vars.BUILD_NAME }}:${{ IMAGE_TAG }}
