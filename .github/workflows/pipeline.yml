@@ -22,6 +22,11 @@ permissions:
   contents: read
 
 jobs:
+  test-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        run: echo "Hello, World!"
   set-environment:
     name: setup environments
     runs-on: ubuntu-20.04
