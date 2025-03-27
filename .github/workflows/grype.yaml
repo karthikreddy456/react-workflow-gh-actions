@@ -3,7 +3,7 @@ name: Security Scan with Grype
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   grype_scan:
