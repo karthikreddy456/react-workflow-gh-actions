@@ -20,4 +20,4 @@ jobs:
 
       - name: Scan Image with Grype
         run: |
-          grype npm:.
+           grype dir:. --fail-on Critical
