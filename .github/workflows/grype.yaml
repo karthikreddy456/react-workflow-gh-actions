@@ -1,0 +1,23 @@
+name: Security Scan with Grype
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  grype_scan:
+    name: Run Grype Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Scan Image with Grype
+        run: |
+          grype npm:.
